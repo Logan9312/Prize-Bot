@@ -54,3 +54,7 @@ func Ptr[T any](v T) *T {
 func ImageToURL(i *discordgo.InteractionCreate, options map[string]interface{}) string {
 	return i.ApplicationCommandData().Resolved.Attachments[options["image"].(string)].URL
 }
+
+func FetchImageURL(i *discordgo.InteractionCreate) {
+	return i.ApplicationCommandData().Resolved.Attachments[options["image"].(string)].URL
+}

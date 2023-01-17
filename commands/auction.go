@@ -121,11 +121,7 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	options := h.ParseSubCommand(i)
 	errors := []string{}
 
-	duration, err := h.ParseTime(strings.ToLower(options["duration"].(string)))
-	if err != nil {
-		return fmt.Errorf("Error parsing duration input: %w", err)
-	}
-
+	//Splits the auction names
 	auctions := strings.Split(options["item"].(string), ";")
 
 	if len(auctions) > 5 && !CheckPremiumGuild(i.GuildID) {
@@ -143,7 +139,7 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		}
 		auctionMap["item"] = item
 
-		channelID, err := AuctionHandler(s, auctionMap, i.Member, i.GuildID, duration)
+		channelID, err := AuctionHandler(s, i, auctionMap)
 		if err != nil {
 			errors = append(errors, err.Error())
 		}
@@ -172,10 +168,7 @@ func AuctionSchedule(s *discordgo.Session, i *discordgo.InteractionCreate) error
 
 func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 
-	if options["image"] != nil {
-		options["image_url"] = i.ApplicationCommandData().Resolved.Attachments[options["image"].(string)].URL
-		delete(options, "image")
-	}
+
 
 	options["channel_id"] = i.ChannelID
 
@@ -269,9 +262,20 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return nil
 }
 
-func AuctionHandler(s *discordgo.Session, auctionMap map[string]any, member *discordgo.Member, guildID string, duration time.Duration) (channelID string, err error) {
+func AuctionHandler(s *discordgo.Session, i *discordgo.InteractionCreate, auctionMap map[string]any) (channelID string, err error) {
 	auctionSetup := map[string]interface{}{}
 	currencyMap := map[string]interface{}{}
+
+	duration, err := h.ParseTime(strings.ToLower(options["duration"].(string)))
+	if err != nil {
+		return "", fmt.Errorf("Error parsing duration input: %w", err)
+	}
+
+	FetchImageURL(s, i, options)
+	if options["image"] != nil {
+		options["image_url"] = 
+		delete(options, "image")
+	}
 
 	result := database.DB.Model(&database.AuctionSetup{}).First(&auctionSetup, guildID)
 	if result.Error != nil {
@@ -1204,8 +1208,6 @@ func ClearAuctionButton(s *discordgo.Session, i *discordgo.InteractionCreate) er
 	}
 	return nil
 }
-
-
 
 func DeleteAuctionQueue(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 

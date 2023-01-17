@@ -76,5 +76,6 @@ func main() {
 
 	fmt.Println("Bot is running!")
 
+	//TODO Possibly put this at the start as a goroutine
 	routers.BotStatus()
 }
