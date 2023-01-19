@@ -11,6 +11,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/logan9312/discord-auction-bot/database"
+	"gitlab.com/logan9312/discord-auction-bot/events"
 	h "gitlab.com/logan9312/discord-auction-bot/helpers"
 	r "gitlab.com/logan9312/discord-auction-bot/responses"
 	"golang.org/x/text/language"
@@ -117,6 +118,10 @@ func Auction(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	return fmt.Errorf("Unknown Auction command, please contact support")
 }
 
+func SaveAuction(auction database.Auction) error {
+	return database.DB.Save(&auction).Error
+}
+
 func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 	options := h.ParseSubCommand(i)
 	errors := []string{}
@@ -132,6 +137,27 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		return fmt.Errorf("You can only start 100 auctions in bulk at once. You attempted to start: %d.", len(auctions))
 	}
 
+	eventData := &events.Event{
+		BotID:     s.State.User.ID,
+		EventType: EventTypeAuction,
+		GuildID:   i.GuildID,
+	}
+
+	if options["image"] != nil {
+		eventData.ImageURL = h.ImageToURL(i, options["image"].(string))
+		delete(options, "image")
+	}
+
+	if options["duration"] != nil {
+		duration, err := h.ParseTime(options["duration"].(string))
+		if err != nil {
+			return fmt.Errorf("Error parsing time input: %w", err)
+		}
+		eventData.EndTime = h.Ptr(time.Now().Add(duration))
+		delete(options, "duration")
+	}
+
+	//TODO Optimize selecting multiple auctions
 	for _, item := range auctions {
 		auctionMap := map[string]any{}
 		for k, v := range options {
@@ -163,131 +189,29 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 }
 
 func AuctionSchedule(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-
-}
-
-func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
-
-
-
-	options["channel_id"] = i.ChannelID
-
-	duration, err := h.ParseTime(strings.ToLower(options["duration"].(string)))
-	if err != nil {
-		return fmt.Errorf("Error parsing duration input: %w", err)
-	}
-	delete(options, "duration")
-
-	multiAuctions := strings.Split(options["item"].(string), ";")
-
-	if len(multiAuctions) > 5 && !CheckPremiumGuild(i.GuildID) {
-		h.PremiumError(s, i, "Free users can only start 5 auctions in bulk. Upgrade to premium to start up to 100 in bulk.")
-	}
-
-	if len(multiAuctions) > 100 {
-		return fmt.Errorf("You can only start 100 auctions in bulk at once. You attempted to start: %d.", len(multiAuctions))
-	}
-
-	for _, item := range multiAuctions {
-		auctionMap := map[string]any{}
-		options["item"] = item
-		for k, v := range options {
-			auctionMap[k] = v
-		}
-
-		channelID, err := AuctionHandler(s, auctionMap, i.Member, i.GuildID, duration)
-		if err != nil {
-			return err
-		}
-
-		if channelID != "" {
-			err = h.SuccessResponse(s, i, h.PresetResponse{
-				Title:       "**Auction Starting**",
-				Description: fmt.Sprintf("Auction has successfully been started in <#%s>!", channelID),
-			})
-		} else {
-			exampleMessage, err := EventFormat(s, auctionMap, EventTypeAuction, i.GuildID)
-			if err != nil {
-				fmt.Println("Error formatting auction", err)
-				return err
-			}
-
-			err = h.SuccessResponse(s, i, h.PresetResponse{
-				Title: "Auction has been Scheduled!",
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "**Auction Start Time:**",
-						Value:  fmt.Sprintf("<t:%d:R>", auctionMap["start_time"].(time.Time).Unix()),
-						Inline: false,
-					},
-				},
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "[__**PREVIEW:**__] " + exampleMessage.Title,
-						Description: exampleMessage.Description,
-						Color:       0x8073ff,
-						Image:       exampleMessage.Image,
-						Thumbnail:   exampleMessage.Thumbnail,
-						Fields:      exampleMessage.Fields,
-					},
-				},
-			})
-			if err != nil {
-				_, err = h.FollowUpSuccessResponse(s, i, h.PresetResponse{
-					Title: "Auction has been Scheduled!",
-					Fields: []*discordgo.MessageEmbedField{
-						{
-							Name:   "**Auction Start Time:**",
-							Value:  fmt.Sprintf("<t:%d:R>", auctionMap["start_time"].(time.Time).Unix()),
-							Inline: false,
-						},
-					},
-					Embeds: []*discordgo.MessageEmbed{
-						{
-							Title:       "[__**PREVIEW:**__] " + exampleMessage.Title,
-							Description: exampleMessage.Description,
-							Color:       0x8073ff,
-							Image:       exampleMessage.Image,
-							Thumbnail:   exampleMessage.Thumbnail,
-							Fields:      exampleMessage.Fields,
-						},
-					},
-				})
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
+	//TODO Generate a preview of auction and schedule it
 	return nil
 }
 
-func AuctionHandler(s *discordgo.Session, i *discordgo.InteractionCreate, auctionMap map[string]any) (channelID string, err error) {
-	auctionSetup := map[string]interface{}{}
-	currencyMap := map[string]interface{}{}
+func AuctionHandler(s *discordgo.Session, i *discordgo.InteractionCreate, event events.Event, data map[string]any) (channelID string, err error) {
+	auctionSettings := &database.AuctionSetup{}
+	currencySettings := &database.CurrencySetup{}
 
-	duration, err := h.ParseTime(strings.ToLower(options["duration"].(string)))
+	duration, err := h.ParseTime(strings.ToLower(data["duration"].(string)))
 	if err != nil {
-		return "", fmt.Errorf("Error parsing duration input: %w", err)
+		return "", r.Errorfmt(err)
 	}
 
-	FetchImageURL(s, i, options)
-	if options["image"] != nil {
-		options["image_url"] = 
-		delete(options, "image")
-	}
-
-	result := database.DB.Model(&database.AuctionSetup{}).First(&auctionSetup, guildID)
+	result := database.DB.First(&auctionSettings, i.GuildID)
 	if result.Error != nil {
-		fmt.Println(result.Error)
+		fmt.Println("Error getting auction settings: " + result.Error.Error())
 	}
 
-	result = database.DB.Model(database.CurrencySetup{}).First(&currencyMap, guildID)
+	result = database.DB.First(&currencySettings, i.GuildID)
 	if result.Error != nil {
-		fmt.Println("Error getting currency setup: " + result.Error.Error())
+		fmt.Println("Error getting currency settings: " + result.Error.Error())
 	}
 
-	auctionMap["guild_id"] = guildID
 	auctionMap["host"] = member.User.ID
 
 	if auctionMap["currency"] == nil {

@@ -70,3 +70,7 @@ var SettingsCommand = discordgo.ApplicationCommand{
 		},*/
 	},
 }
+
+func FetchSettings (target any) {
+	
+}

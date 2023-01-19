@@ -9,10 +9,11 @@ type Event struct {
 	BotID     string
 	EventType string
 	GuildID   string
-	ChannelID string
-	MessageID string
+	ChannelID *string
+	MessageID *string
 	StartTime *time.Time
 	EndTime   *time.Time
+	ImageURL  *string
 }
 
 func (event Event) StartTimers() {
