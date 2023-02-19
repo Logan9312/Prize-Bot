@@ -137,25 +137,7 @@ func AuctionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 		return fmt.Errorf("You can only start 100 auctions in bulk at once. You attempted to start: %d.", len(auctions))
 	}
 
-	eventData := &events.Event{
-		BotID:     s.State.User.ID,
-		EventType: EventTypeAuction,
-		GuildID:   i.GuildID,
-	}
-
-	if options["image"] != nil {
-		eventData.ImageURL = h.ImageToURL(i, options["image"].(string))
-		delete(options, "image")
-	}
-
-	if options["duration"] != nil {
-		duration, err := h.ParseTime(options["duration"].(string))
-		if err != nil {
-			return fmt.Errorf("Error parsing time input: %w", err)
-		}
-		eventData.EndTime = h.Ptr(time.Now().Add(duration))
-		delete(options, "duration")
-	}
+	eventData := events.InteractionEvent(s, i, events.EventTypeAuction, options)
 
 	//TODO Optimize selecting multiple auctions
 	for _, item := range auctions {

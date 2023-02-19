@@ -9,12 +9,6 @@ import (
 	h "gitlab.com/logan9312/discord-auction-bot/helpers"
 )
 
-const (
-	EventTypeAuction  = "Auction"
-	EventTypeShop     = "Shop"
-	EventTypeGiveaway = "Giveaway"
-)
-
 // TODO Rework this file
 func EventFormat(s *discordgo.Session, data map[string]interface{}, eventType string, guildID string) (h.PresetResponse, error) {
 

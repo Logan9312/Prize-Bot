@@ -35,25 +35,19 @@ type AuctionSetup struct {
 }
 
 type Auction struct {
-	Event           events.Event
-	EventID         string
-	Item            string
-	Bid             float64
-	Winner          string
-	Host            string
-	Currency        string
-	IncrementMin    float64
-	IncrementMax    float64
-	Description     string
-	TargetPrice     float64
-	Buyout          float64
-	CurrencySide    string
-	IntegerOnly     bool
-	BidHistory      string
-	Note            string
-	ChannelOverride string
-	ChannelLock     bool
-	UseCurrency     bool
+	Event        events.Event
+	EventID      string
+	Item         string
+	Bid          float64
+	Winner       string
+	IncrementMin float64
+	IncrementMax float64
+	TargetPrice  float64
+	Buyout       float64
+	IntegerOnly  bool
+	BidHistory   string
+	ChannelLock  bool
+	Currency     *Currency
 }
 
 type AuctionQueue struct {
@@ -111,7 +105,6 @@ type Claim struct {
 	ImageURL    string
 	TicketID    string
 	Description string
-	UseCurrency bool
 }
 
 type Giveaway struct {
@@ -142,6 +135,9 @@ type ShopSetup struct {
 }
 
 type Currency struct {
+	Symbol      string
+	RightSide   bool // True if the currency should display on the right side
+	UseCurrency bool // True if user's currency is used for transaction.
 }
 
 type CurrencySetup struct {
