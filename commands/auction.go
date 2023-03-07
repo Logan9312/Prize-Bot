@@ -119,6 +119,7 @@ func Auction(s *discordgo.Session, i *discordgo.InteractionCreate) error {
 }
 
 func SaveAuction(auction database.Auction) error {
+	//TODO wtf is gorm save??
 	return database.DB.Save(&auction).Error
 }
 

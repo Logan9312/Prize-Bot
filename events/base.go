@@ -35,7 +35,7 @@ func (event Event) StartTimers() {
 
 }
 
-func InteractionEvent(s *discordgo.Session, i *discordgo.InteractionCreate, et EventType, options map[string]any) error {
+func InteractionEvent(s *discordgo.Session, i *discordgo.InteractionCreate, et EventType, options map[string]any) (Event, error) {
 	eventData := &Event{
 		BotID:     s.State.User.ID,
 		EventType: et,
